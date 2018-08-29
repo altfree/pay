@@ -27,14 +27,14 @@ import (
 
 const (
 	Gateway           = "https://openapi.alipay.com/gateway.do?"
-	AppId             = "商户id"
+	AppId             = "2018021102179240"
 	Format            = "JSON"
 	ReturnUrl         = "https://api.ncwc.com.cn"
 	NotifyUrl         = "https://api.ncwc.com.cn"
 	Charset           = "UTF-8"
 	Version           = "1.0"
 	SignType          = "RSA2"
-	PublicKey         = "//Users/alt/go/src/golang/example/publickey.pem" //支付宝公钥 用于回调签名验证
+	PublicKey         = "/Users/alt/go/src/golang/example/publickey.pem"  //支付宝公钥 用于回调签名验证
 	PrivateKey        = "/Users/alt/go/src/golang/example/privatekey.pem" //商户私钥用于创建支付宝订单
 	ProductCode       = "FAST_INSTANT_TRADE_PAY"                          //签约产品 发起支付交易使用
 	PcPayMethod       = "alipay.trade.page.pay"                           //pc支付
@@ -43,7 +43,7 @@ const (
 
 )
 
-func GetPayUrl(param map[string]string) (string, error) {
+func AlipayGetPayUrl(param map[string]string) (string, error) {
 
 	if param["out_trade_no"] == "" {
 
@@ -77,7 +77,7 @@ func GetPayUrl(param map[string]string) (string, error) {
 }
 
 //退款接口
-func TradeRefund(param map[string]string) (string, error) {
+func AlipayTradeRefund(param map[string]string) (string, error) {
 
 	if param["out_trade_no"] == "" && param["trade_no"] == "" {
 
@@ -100,7 +100,7 @@ func TradeRefund(param map[string]string) (string, error) {
 
 	}
 
-	backMsg, err := curlGetRes(url)
+	backMsg, err := CurlGetRes(url, "")
 	if err != nil {
 
 		return "", err
@@ -110,11 +110,22 @@ func TradeRefund(param map[string]string) (string, error) {
 
 }
 
-func curlGetRes(site string) ([]byte, error) {
+func CurlGetRes(site string, param string) ([]byte, error) {
 
-	// if len(param) == 0 {
+	if len(param) == 0 {
 
-	res, err := http.Get(site)
+		res, err := http.Get(site)
+		if err != nil {
+
+			return nil, err
+
+		}
+		defer res.Body.Close()
+		body, err := ioutil.ReadAll(res.Body)
+		return body, nil
+	}
+
+	res, err := http.Post(site, "xml", strings.NewReader(param))
 	if err != nil {
 
 		return nil, err
@@ -123,17 +134,6 @@ func curlGetRes(site string) ([]byte, error) {
 	defer res.Body.Close()
 	body, err := ioutil.ReadAll(res.Body)
 	return body, nil
-	// }
-
-	// res, err := http.PostForm(site, param)
-	// if err != nil {
-
-	// 	return nil, err
-
-	// }
-	// defer res.Body.Close()
-	// body, err := ioutil.ReadAll(res.Body)
-	// return body, nil
 
 }
 
@@ -227,8 +227,8 @@ func alipaySignature(content []byte, sign string) (string, error) {
 
 }
 
-//签名验证
-func CheckNotify(notify map[string]string) (bool, error) {
+//异步回调签名验证
+func AlipayCheckNotify(notify map[string]string) (bool, error) {
 
 	sign := notify["sign"]
 	signType := notify["sign_type"]
