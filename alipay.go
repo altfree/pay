@@ -11,26 +11,35 @@ import (
 	"encoding/pem"
 	"errors"
 	"io/ioutil"
+	"net/http"
 	"net/url"
 	"sort"
+	"strconv"
 	"strings"
 	"time"
 )
 
+/**
+ *			详细请查看支付宝相关api文档
+ *			该包只封装了支付宝交易过程中一些必传参数做了判断
+ *
+ */
+
 const (
-	Gateway      = "https://openapi.alipay.com/gateway.do?"
-	AppId        = "商户id"
-	Format       = "JSON"
-	ReturnUrl    = "https://api.ncwc.com.cn"
-	NotifyUrl    = "https://api.ncwc.com.cn"
-	Charset      = "UTF-8"
-	Version      = "1.0"
-	SignType     = "RSA2"
-	PublicKey    = "//Users/alt/go/src/golang/example/publickey.pem" //支付宝公钥 用于回调签名验证
-	PrivateKey   = "/Users/alt/go/src/golang/example/privatekey.pem" //商户私钥用于创建支付宝订单
-	ProductCode  = "FAST_INSTANT_TRADE_PAY"                          //签约产品
-	PcPayMethod  = "alipay.trade.page.pay"                           //pc支付接口名称
-	WapPayMethod = "alipay.trade.wap.pay"                            //pc支付接口名称
+	Gateway           = "https://openapi.alipay.com/gateway.do?"
+	AppId             = "商户id"
+	Format            = "JSON"
+	ReturnUrl         = "https://api.ncwc.com.cn"
+	NotifyUrl         = "https://api.ncwc.com.cn"
+	Charset           = "UTF-8"
+	Version           = "1.0"
+	SignType          = "RSA2"
+	PublicKey         = "//Users/alt/go/src/golang/example/publickey.pem" //支付宝公钥 用于回调签名验证
+	PrivateKey        = "/Users/alt/go/src/golang/example/privatekey.pem" //商户私钥用于创建支付宝订单
+	ProductCode       = "FAST_INSTANT_TRADE_PAY"                          //签约产品 发起支付交易使用
+	PcPayMethod       = "alipay.trade.page.pay"                           //pc支付
+	WapPayMethod      = "alipay.trade.wap.pay"                            //wap支付
+	TradeRefundMethod = "alipay.trade.refund"                             //退款
 
 )
 
@@ -57,13 +66,74 @@ func GetPayUrl(param map[string]string) (string, error) {
 
 	}
 	param["product_code"] = ProductCode
-	url, err := commonQes(WapPayMethod, param)
+	url, err := commonQes(PcPayMethod, param)
 	if err != nil {
 
 		return "", err
 
 	}
 	return url, nil
+
+}
+
+//退款接口
+func TradeRefund(param map[string]string) (string, error) {
+
+	if param["out_trade_no"] == "" && param["trade_no"] == "" {
+
+		return "", EmptyError("对不起,商户订单号和支付宝订单好不能同时为空")
+
+	}
+	//字符串转float
+	amount, _ := strconv.ParseFloat(param["refund_amount"], 32/64)
+
+	if param["refund_amount"] == "" && amount < 0.01 {
+
+		return "", EmptyError("对不起,退款金额最低0.01")
+
+	}
+
+	url, err := commonQes(TradeRefundMethod, param)
+	if err != nil {
+
+		return "", err
+
+	}
+
+	backMsg, err := curlGetRes(url)
+	if err != nil {
+
+		return "", err
+
+	}
+	return string(backMsg), nil
+
+}
+
+func curlGetRes(site string) ([]byte, error) {
+
+	// if len(param) == 0 {
+
+	res, err := http.Get(site)
+	if err != nil {
+
+		return nil, err
+
+	}
+	defer res.Body.Close()
+	body, err := ioutil.ReadAll(res.Body)
+	return body, nil
+	// }
+
+	// res, err := http.PostForm(site, param)
+	// if err != nil {
+
+	// 	return nil, err
+
+	// }
+	// defer res.Body.Close()
+	// body, err := ioutil.ReadAll(res.Body)
+	// return body, nil
 
 }
 
