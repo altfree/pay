@@ -5,6 +5,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"encoding/xml"
+	"fmt"
 	"strconv"
 	"strings"
 )
@@ -16,9 +17,9 @@ type Wechat interface {
 }
 
 const (
-	WechatAppId         = "公众号appid"
-	WechatMchId         = "商户号"
-	WechatNotifyUrl     = "http://example.com/payments/wechat-notify"
+	WechatAppId         = ""
+	WechatMchId         = ""
+	WechatNotifyUrl     = "http://116.196.72.23:9091/pay/test"
 	WechatCreatTradeUrl = "https://api.mch.weixin.qq.com/pay/unifiedorder"  //统一下单
 	WechatRefund        = "https://api.mch.weixin.qq.com/secapi/pay/refund" //申请退款
 	WechatQueryRefund   = "https://api.mch.weixin.qq.com/pay/refundquery"   //退款查询
@@ -73,7 +74,30 @@ type QueryRefundParam struct {
 	OutRefundNo string `xml:"out_refund_no_$n"  json:"out_refund_no_$n"` //商户退款订单号
 }
 
-var publicParameter map[string]string
+type WechatNotifyParam struct {
+	AppId    string `xml:"appid" json:"appid"`
+	MchId    string `xml:"mch_id" json:"mch_id"`
+	NonceStr string `xml:"nonce_str" json:"nonce_str"`
+	Sign     string `xml:"sign" json:"sign"`
+	// sign_type            string `xml:"sign_type" json:"sign_type"`  //采用默认md5
+	OpenId        string `xml:"openid" json:"openid"`
+	IsSubscribe   string `xml:"is_subscribe" json:"is_subscribe"`
+	TradeType     string `xml:"trade_type" json:"trade_type"`
+	BankType      string `xml:"bank_type" json:"bank_type"`
+	TotalFee      string `xml:"total_fee" json:"total_fee"`
+	FeeType       string `xml:"fee_type"  json:"fee_type"`
+	CashFee       string `xml:"cash_fee" json:"cash_fee"`
+	TransactionId string `xml:"transaction_id" json:"transaction_id"`
+	OutTradeNo    string `xml:"out_trade_no" json:"out_trade_no"`
+	Attch         string `xml:"attach" json:"attach"`
+	TimeEnd       string `xml:"time_end" json:"time_end"`
+	ReturnCode    string `xml:"return_code" json:"return_code"`
+	ReturnMsg     string `xml:"return_msg"  json:"return_msg"`
+	ResultCode    string `xml:"result_code"  json:"result_code"`
+	ErrCode       string `xml:"err_code"  json:"err_code"`
+	ErrCodeDes    string `xml:"err_code_des"  json:"err_code_des"` //错误信息描述
+
+}
 
 //准备发起的交易信息 请按照微信开发文档的字段进行传值 https://pay.weixin.qq.com/wiki/doc/api/jsapi.php?chapter=9_1
 func creatTrade(genre string, param map[string]string) (string, error) {
@@ -246,21 +270,32 @@ func ScanPay(param map[string]string) (string, error) {
 }
 
 //通知支付结果
-func WechatNotify(param map[string]string) (bool, error) {
+func WechatNotify(param string) (bool, error) {
 
-	signValue := param["sign"]
-	signType := param["sign_type"]
-	delete(param, "sign")
-	delete(param, "sign_type")
+	var data WechatNotifyParam
+	xml.Unmarshal([]byte(param), &data)
+	fmt.Println(data)
+	res, _ := json.Marshal(data)
+	js := make(map[string]string)
+	json.Unmarshal(res, &js)
+	signValue := js["sign"]
+	signType := js["sign_type"]
+	delete(js, "sign")
+	delete(js, "sign_type")
+	// delete(js, "sign")
+
 	var signStr string
 	if signType == "HMAC-SHA256" {
+
+		//你来写吧
 
 		return false, EmptyError("这里进行sha256签名")
 
 	} else {
 
-		signStr = signature(param)
+		signStr = signature(js)
 	}
+
 	if signValue == signStr {
 
 		return true, nil
