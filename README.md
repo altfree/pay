@@ -16,7 +16,7 @@
     	""
     	)
     //异步回调测试
-    func NotifyTest(w http.Responsewriter,r *http.Request){
+    func NotifyTest(w http.ResponseWriter,r *http.Request){
         
         body := r.Body
 	    defer body.Close()
