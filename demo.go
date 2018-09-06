@@ -16,9 +16,9 @@ var alipay pay.AlipayConfig
 
 func init() {
 
-	wechat.WechatAppId = "wx9257b6ca5978ec62"
-	wechat.WechatMchId = "1460719102"
-	wechat.WechatKey = "mfeknfk1ok2wsaso9jkoamda30kdDK22"
+	wechat.WechatAppId = "公众号id"
+	wechat.WechatMchId = "商户id"
+	wechat.WechatKey = "key"
 	wechat.WechatNotifyUrl = "https://www.baidu.com"
 	alipay.Gateway = "https://openapi.alipay.com/gateway.do?"
 	alipay.AppId = "2018021102179240"
