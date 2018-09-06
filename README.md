@@ -6,15 +6,25 @@
 #### &nbsp; &nbsp;示例（签名方式为md5,如果需要传递可选支付参数，请阅读源代码）
     package main
     
-    import (
-    	"fmt"
-    	"io"
-    	"io/ioutil"
-    	"log"
-    	"net/http"
-    	"github.com/Jiebodong/pay"
-    	""
-    	)
+	var wechat pay.WechatPayConfig
+	var alipay pay.AlipayConfig
+
+	func init() {
+
+		wechat.WechatAppId = "公众号id"
+		wechat.WechatMchId = "商户号"
+		wechat.WechatKey = "key"
+		wechat.WechatNotifyUrl = "https://www.baidu.com"
+		alipay.Gateway = "https://openapi.alipay.com/gateway.do?"
+		alipay.AppId = "2018021102179240"
+		alipay.Format = "JSON"
+		alipay.Charset = "UTF-8"
+		alipay.Version = "1.0"
+		alipay.SignType = "RSA2"
+		alipay.PublicKey = "/Users/alt/go/src/golang/example/publickey.pem"
+		alipay.PrivateKey = "/Users/alt/go/src/golang/example/privatekey.pem"
+
+	}
     //异步回调测试
     func NotifyTest(w http.ResponseWriter,r *http.Request){
         
