@@ -10,6 +10,7 @@ import (
 	"encoding/json"
 	"encoding/pem"
 	"errors"
+	"fmt"
 	"io/ioutil"
 	"net/http"
 	"net/url"
@@ -19,31 +20,38 @@ import (
 	"time"
 )
 
-/**
- *			详细请查看支付宝相关api文档
- *			该包只封装了支付宝交易过程中一些必传参数做了判断
- *
- */
+type Alipay interface {
+	AlipayGetPayUrl(param map[string]string) (string, error)
+	AlipayTradeRefund(param map[string]string) (string, error)
+	commonQes(method string, param map[string]string) (string, error)
+	alipaySignature(content []byte, sign string) (string, error)
+	AlipayCheckNotify(notify map[string]string) (bool, error)
+}
+
+type AlipayConfig struct {
+	Gateway    string
+	AppId      string
+	Format     string
+	ReturnUrl  string
+	NotifyUrl  string
+	Charset    string
+	Version    string //版本号
+	Product    string //签约产品
+	SignType   string //签名方式 sha1 or sha256
+	PublicKey  string //支付宝公钥
+	PrivateKey string //商户私钥
+}
 
 const (
-	Gateway           = "https://openapi.alipay.com/gateway.do?"
-	AppId             = "2018021102179240"
-	Format            = "JSON"
-	ReturnUrl         = "https://api.ncwc.com.cn"
-	NotifyUrl         = "https://api.ncwc.com.cn"
-	Charset           = "UTF-8"
-	Version           = "1.0"
-	SignType          = "RSA2"
-	PublicKey         = "/Users/alt/go/src/golang/example/publickey.pem"  //支付宝公钥 用于回调签名验证
-	PrivateKey        = "/Users/alt/go/src/golang/example/privatekey.pem" //商户私钥用于创建支付宝订单
-	ProductCode       = "FAST_INSTANT_TRADE_PAY"                          //签约产品 发起支付交易使用
-	PcPayMethod       = "alipay.trade.page.pay"                           //pc支付
-	WapPayMethod      = "alipay.trade.wap.pay"                            //wap支付
-	TradeRefundMethod = "alipay.trade.refund"                             //退款
-
+	// Format            = "JSON"
+	// Charset           = "UTF-8"
+	ProductCode       = "FAST_INSTANT_TRADE_PAY" //签约产品 发起支付交易使用
+	PcPayMethod       = "alipay.trade.page.pay"  //pc支付
+	WapPayMethod      = "alipay.trade.wap.pay"   //wap支付
+	TradeRefundMethod = "alipay.trade.refund"    //退款
 )
 
-func AlipayGetPayUrl(param map[string]string) (string, error) {
+func (ali *AlipayConfig) AlipayGetPayUrl(param map[string]string) (string, error) {
 
 	if param["out_trade_no"] == "" {
 
@@ -66,7 +74,7 @@ func AlipayGetPayUrl(param map[string]string) (string, error) {
 
 	}
 	param["product_code"] = ProductCode
-	url, err := commonQes(PcPayMethod, param)
+	url, err := ali.commonQes(PcPayMethod, param)
 	if err != nil {
 
 		return "", err
@@ -77,7 +85,7 @@ func AlipayGetPayUrl(param map[string]string) (string, error) {
 }
 
 //退款接口
-func AlipayTradeRefund(param map[string]string) (string, error) {
+func (ali *AlipayConfig) AlipayTradeRefund(param map[string]string) (string, error) {
 
 	if param["out_trade_no"] == "" && param["trade_no"] == "" {
 
@@ -93,7 +101,7 @@ func AlipayTradeRefund(param map[string]string) (string, error) {
 
 	}
 
-	url, err := commonQes(TradeRefundMethod, param)
+	url, err := ali.commonQes(TradeRefundMethod, param)
 	if err != nil {
 
 		return "", err
@@ -133,28 +141,30 @@ func CurlGetRes(site string, param string) ([]byte, error) {
 	}
 	defer res.Body.Close()
 	body, err := ioutil.ReadAll(res.Body)
+	fmt.Println(string(body))
+
 	return body, nil
 
 }
 
 //组装请求参数
-func commonQes(method string, param map[string]string) (string, error) {
+func (ali *AlipayConfig) commonQes(method string, param map[string]string) (string, error) {
 
 	data := make(map[string]string)
 	//请求业务参数排序
 	content, _ := json.Marshal(param)
 	data["biz_content"] = string(content)
-	data["app_id"] = AppId
+	data["app_id"] = ali.AppId
 	data["method"] = method
-	data["format"] = Format
-	data["return_url"] = ReturnUrl
-	data["charset"] = Charset
-	data["version"] = Version
-	data["notify_url"] = NotifyUrl
-	data["sign_type"] = SignType
+	data["format"] = ali.Format
+	data["return_url"] = ali.ReturnUrl
+	data["charset"] = ali.Charset
+	data["version"] = ali.Version
+	data["notify_url"] = ali.NotifyUrl
+	data["sign_type"] = ali.SignType
 	data["timestamp"] = time.Now().Format("2006-01-02 15:04:05")
 	strJoin := ascii(data)
-	signStr, err := alipaySignature([]byte(strJoin), SignType)
+	signStr, err := ali.alipaySignature([]byte(strJoin), ali.SignType)
 	if err != nil {
 		return "", err
 	}
@@ -164,7 +174,7 @@ func commonQes(method string, param map[string]string) (string, error) {
 		requestUrl.Add(k, v)
 	}
 
-	return Gateway + requestUrl.Encode(), nil
+	return ali.Gateway + requestUrl.Encode(), nil
 
 }
 
@@ -190,8 +200,8 @@ func ascii(data map[string]string) string {
 }
 
 //签名并base64编码
-func alipaySignature(content []byte, sign string) (string, error) {
-	key, err := ioutil.ReadFile(PrivateKey)
+func (ali *AlipayConfig) alipaySignature(content []byte, sign string) (string, error) {
+	key, err := ioutil.ReadFile(ali.PrivateKey)
 	if err != nil {
 		return "", err
 	}
@@ -203,7 +213,7 @@ func alipaySignature(content []byte, sign string) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	if SignType == "RSA2" {
+	if ali.SignType == "RSA2" {
 		h := sha256.New()
 		h.Write([]byte(content))
 		digest := h.Sum(nil)
@@ -228,7 +238,7 @@ func alipaySignature(content []byte, sign string) (string, error) {
 }
 
 //异步回调签名验证
-func AlipayCheckNotify(notify map[string]string) (bool, error) {
+func (ali *AlipayConfig) AlipayCheckNotify(notify map[string]string) (bool, error) {
 
 	sign := notify["sign"]
 	signType := notify["sign_type"]
@@ -237,7 +247,7 @@ func AlipayCheckNotify(notify map[string]string) (bool, error) {
 	delete(notify, "sign_type")
 
 	sort := ascii(notify)
-	publicKey, err := ioutil.ReadFile(PublicKey)
+	publicKey, err := ioutil.ReadFile(ali.PublicKey)
 	if err != nil {
 		return false, err
 	}

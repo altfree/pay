@@ -5,7 +5,6 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"encoding/xml"
-	"fmt"
 	"strconv"
 	"strings"
 )
@@ -15,19 +14,25 @@ type Wechat interface {
 	AppPay() (string, error)
 	ScanPay() (string, error)
 }
+type WechatPayConfig struct {
+	WechatAppId     string
+	WechatMchId     string
+	WechatKey       string
+	WechatNotifyUrl string
+}
 
 const (
-	WechatAppId         = ""
-	WechatMchId         = ""
-	WechatNotifyUrl     = "http://116.196.72.23:9091/pay/test"
+	// WechatAppId         = "wx9257b6ca5978ec62"
+	// WechatMchId         = "1460719102"
+	// WechatNotifyUrl     = "http://116.196.72.23:9091/pay/test"
 	WechatCreatTradeUrl = "https://api.mch.weixin.qq.com/pay/unifiedorder"  //统一下单
 	WechatRefund        = "https://api.mch.weixin.qq.com/secapi/pay/refund" //申请退款
 	WechatQueryRefund   = "https://api.mch.weixin.qq.com/pay/refundquery"   //退款查询
 	WechatAppPay        = "APP"
 	WechatJsPay         = "JSAPI"
 	WechatScan          = "NATIVE"
-	WechatSignType      = "HMAC-SHA256" //签名方式默认为md5
-	WechatKey           = "mfeknfk1ok2wsaso9jkoamda30kdDK22"
+	WechatSignType      = "md5" //签名方式默认为md5
+	// WechatKey           = "mfeknfk1ok2wsaso9jkoamda30kdDK22"
 )
 
 //定义支付数据解析xml的结构体
@@ -100,16 +105,16 @@ type WechatNotifyParam struct {
 }
 
 //准备发起的交易信息 请按照微信开发文档的字段进行传值 https://pay.weixin.qq.com/wiki/doc/api/jsapi.php?chapter=9_1
-func creatTrade(genre string, param map[string]string) (string, error) {
+func (weixin *WechatPayConfig) creatTrade(genre string, param map[string]string) (string, error) {
 
-	param["appid"] = WechatAppId
-	param["mch_id"] = WechatMchId
+	param["appid"] = weixin.WechatAppId
+	param["mch_id"] = weixin.WechatMchId
 	// param["sign_type"] = WechatSignType
 	// param["body"] = WechatAppId
 	// param["out_trade_no"] = WechatAppId
 	// param["total_fee"] = WechatAppId
 	// param["spbill_create_ip"] = WechatAppId
-	param["notify_url"] = WechatNotifyUrl
+	param["notify_url"] = weixin.WechatNotifyUrl
 	param["trade_type"] = genre
 	if param["appid"] == "" {
 
@@ -142,7 +147,7 @@ func creatTrade(genre string, param map[string]string) (string, error) {
 		return "", EmptyError("请传入用户地址ip")
 
 	}
-	signStr := signature(param)
+	signStr := signature(param, weixin.WechatKey)
 	param["sign"] = signStr //转换为大写
 	res, err := paramFormat(WechatCreatTradeUrl, param)
 	if err != nil {
@@ -159,10 +164,10 @@ func creatTrade(genre string, param map[string]string) (string, error) {
 }
 
 //签名   默认使用MD5
-func signature(param map[string]string) string {
+func signature(param map[string]string, key string) string {
 
 	sort := ascii(param)
-	waitSign := sort + "&key=" + WechatKey
+	waitSign := sort + "&key=" + key
 	signMethod := md5.New()
 	signMethod.Write([]byte(waitSign))
 	signStr := signMethod.Sum(nil)
@@ -186,10 +191,10 @@ func paramFormat(url string, param map[string]string) ([]byte, error) {
 }
 
 //申请退款
-func ApplyRefund(refund map[string]string) (string, error) {
+func (wexin *WechatPayConfig) ApplyRefund(refund map[string]string) (string, error) {
 
-	refund["appid"] = WechatAppId
-	refund["mch_id"] = WechatMchId
+	refund["appid"] = wexin.WechatAppId
+	refund["mch_id"] = wexin.WechatMchId
 	if refund["appid"] == "" {
 
 		return "", EmptyError("请传入公众号appid")
@@ -221,7 +226,7 @@ func ApplyRefund(refund map[string]string) (string, error) {
 		return "", EmptyError("微信订单号和商户订单号不能同时为空")
 
 	}
-	signStr := signature(refund)
+	signStr := signature(refund, wexin.WechatKey)
 	refund["sign"] = signStr
 	res, err := paramFormat(WechatRefund, refund)
 	if err != nil {
@@ -237,32 +242,32 @@ func ApplyRefund(refund map[string]string) (string, error) {
 
 }
 
-func JsPay(param map[string]string) (string, error) {
+func (weixin *WechatPayConfig) JsPay(param map[string]string) (string, error) {
 
 	if param["openid"] == "" {
 
 		return "", EmptyError("JSAPI支付必须传入用户openid")
 	}
 
-	payParam, err := creatTrade(WechatJsPay, param)
+	payParam, err := weixin.creatTrade(WechatJsPay, param)
 
 	if err != nil {
 		return "", err
 	}
 	return payParam, nil
 }
-func AppPay(param map[string]string) (string, error) {
+func (weixin *WechatPayConfig) AppPay(param map[string]string) (string, error) {
 
-	payParam, err := creatTrade(WechatAppPay, param)
+	payParam, err := weixin.creatTrade(WechatAppPay, param)
 	if err != nil {
 		return "", err
 	}
 	return payParam, nil
 }
 
-func ScanPay(param map[string]string) (string, error) {
+func (weixin *WechatPayConfig) ScanPay(param map[string]string) (string, error) {
 
-	payParam, err := creatTrade(WechatScan, param)
+	payParam, err := weixin.creatTrade(WechatScan, param)
 	if err != nil {
 		return "", err
 	}
@@ -270,11 +275,10 @@ func ScanPay(param map[string]string) (string, error) {
 }
 
 //通知支付结果
-func WechatNotify(param string) (bool, error) {
+func (wexin *WechatPayConfig) WechatNotify(param string) (bool, error) {
 
 	var data WechatNotifyParam
 	xml.Unmarshal([]byte(param), &data)
-	fmt.Println(data)
 	res, _ := json.Marshal(data)
 	js := make(map[string]string)
 	json.Unmarshal(res, &js)
@@ -293,7 +297,7 @@ func WechatNotify(param string) (bool, error) {
 
 	} else {
 
-		signStr = signature(js)
+		signStr = signature(js, wexin.WechatKey)
 	}
 
 	if signValue == signStr {
