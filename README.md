@@ -39,8 +39,8 @@
         	payParam := map[string]string{"subject": "标题", "out_trade_no": "订单号", "total_amount": "金额（最小一分","openid":"用户openid（jsapi支付必传）"}
         	//backMsg 数据为json格式 
         	backMsg, err :=pay.ScanPay(payParam) //扫码支付
-        	backMsg, err :=pay.ScanPay(payParam) //app支付参数
-            backMsg, err :=pay.ScanPay(payParam) //jsapi支付 
+        	backMsg, err :=pay.AppPay(payParam) //app支付参数
+            	backMsg, err :=pay.JsPay(payParam) //jsapi支付 
             //如果想转换为map
             dataMap:=make(map[string]string)
             json.Unmarshal(res, &dataMap)  //将数据赋值给dataMap
