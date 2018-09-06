@@ -16,7 +16,7 @@
 		wechat.WechatKey = "key"
 		wechat.WechatNotifyUrl = "https://www.baidu.com"
 		alipay.Gateway = "https://openapi.alipay.com/gateway.do?"
-		alipay.AppId = "2018021102179240"
+		alipay.AppId = "支付宝商户应用id"
 		alipay.Format = "JSON"
 		alipay.Charset = "UTF-8"
 		alipay.Version = "1.0"
@@ -32,7 +32,7 @@
 	    defer body.Close()
 	    //读取请求主体参数到data
 	    data, _ := ioutil.ReadAll(body)
-	    _, err := pay.WechatNotify(string(data)) //传入回调参数，验证签名，签名成功则返回true，反之为false和错误信息
+	    _, err := wechat.WechatNotify(string(data)) //传入回调参数，验证签名，签名成功则返回true，反之为false和错误信息
 	    if err != nil {
 	    	log.Fatal(err)
 	    }
@@ -48,8 +48,8 @@
     
         	payParam := map[string]string{"subject": "标题", "out_trade_no": "订单号", "total_amount": "金额（最小一分","openid":"用户openid（jsapi支付必传）"}
         	//backMsg 数据为json格式 
-        	backMsg, err :=pay.ScanPay(payParam) //扫码支付
-        	backMsg, err :=pay.AppPay(payParam) //app支付参数
+        	backMsg, err :=wechat.ScanPay(payParam) //扫码支付
+        	backMsg, err :=wechat.AppPay(payParam) //app支付参数
             	backMsg, err :=pay.JsPay(payParam) //jsapi支付 
             //如果想转换为map
             dataMap:=make(map[string]string)
@@ -66,21 +66,21 @@
     
     //支付宝获取支付链接
 	paramData:= map[string]string{"subject": "标题", "out_trade_no": "订单号", "total_amount": "金额"}
-	url, err := pay.AlipayGetPayUrl(paramData)  //返回支付url,将获取到的url调转即可到支付宝支付页面
+	url, err := alipay.AlipayGetPayUrl(paramData)  //返回支付url,将获取到的url调转即可到支付宝支付页面
 	if err != nil {
 	    fmt.Println(err)
 	}
 	fmt.Println(url)
 	//支付宝退款
 	refundData := map[string]string{"out_trade_no": "订单号", "refund_amount": "退款金额"}
-    backMsg, err := pay.AlipayTradeRefund(refundData) //返回json字符串
+    backMsg, err := alipay.AlipayTradeRefund(refundData) //返回json字符串
 	if err != nil {
 	 	fmt.Println(err)
 	}
 	fmt.Println(backMsg)
 	
     //支付结果，异步回调传入回调参数
-    msg,err:=pay.AlipayCheckNotify("回调参数map[string]string类型")//验证签名，签名成功则返回true，反之为false和错误信息
+    msg,err:=alipay.AlipayCheckNotify("回调参数map[string]string类型")//验证签名，签名成功则返回true，反之为false和错误信息
 
     
 
