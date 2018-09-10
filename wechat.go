@@ -23,7 +23,7 @@ type WechatPayConfig struct {
 
 const (
 	// WechatAppId         = "wx9257b6ca5978ec62"
-	// WechatMchId         = "1460719102"
+	// WechatMchId         = "商户号"
 	// WechatNotifyUrl     = "http://116.196.72.23:9091/pay/test"
 	WechatCreatTradeUrl = "https://api.mch.weixin.qq.com/pay/unifiedorder"  //统一下单
 	WechatRefund        = "https://api.mch.weixin.qq.com/secapi/pay/refund" //申请退款
@@ -32,7 +32,7 @@ const (
 	WechatJsPay         = "JSAPI"
 	WechatScan          = "NATIVE"
 	WechatSignType      = "md5" //签名方式默认为md5
-	// WechatKey           = "mfeknfk1ok2wsaso9jkoamda30kdDK22"
+	// WechatKey           = "key"
 )
 
 //定义支付数据解析xml的结构体
